@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭物品管理系统</title>
+    <style>
+        /* ============ 粉色主题色板 ============ */
+        :root {
+            --primary: #ff6b9d;
+            --primary-dark: #e91e63;
+            --primary-light: #ffd6e7;
+            --primary-bg: #fff0f6;
+            --bg: #fef5f8;
+            --warn: #fa8c16;
+            --danger: #f5222d;
+            --success: #52c41a;
+            --purple: #722ed1;
+            --text: #333;
+            --text-light: #888;
+            --border: #ffe0ec;
+            --shadow: 0 2px 12px rgba(255, 107, 157, 0.12);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b9d, #ffa6c1);
+            color: #fff;
+            padding: 22px 32px;
+            box-shadow: 0 2px 12px rgba(233, 30, 99, 0.25);
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header p { font-size: 13px; opacity: 0.95; margin-top: 4px; }
+
+        .container { max-width: 1240px; margin: 24px auto; padding: 0 20px; }
+
+        /* 统计卡片 */
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 22px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 1px solid var(--border);
+        }
+        .stat-icon {
+            width: 50px; height: 50px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+        }
+        .stat-icon.total { background: var(--primary-light); }
+        .stat-icon.warn { background: #fff7e6; }
+        .stat-icon.expired { background: #fff1f0; }
+        .stat-icon.low { background: #f9f0ff; }
+        .stat-info .num { font-size: 26px; font-weight: 700; }
+        .stat-info .label { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        .stat-card.total .num { color: var(--primary); }
+        .stat-card.warn .num { color: var(--warn); }
+        .stat-card.expired .num { color: var(--danger); }
+        .stat-card.low .num { color: var(--purple); }
+
+        /* 分类统计 + 热门物品 */
+        .dashboard-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .cat-stats, .hot-items {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .cat-stats h3, .hot-items h3 { font-size: 15px; margin-bottom: 14px; color: var(--primary-dark); }
+        .cat-bars { display: flex; flex-wrap: wrap; gap: 12px; }
+        .cat-bar {
+            flex: 1 1 120px;
+            background: var(--primary-bg);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--border);
+        }
+        .cat-bar .name { font-size: 13px; color: #666; }
+        .cat-bar .count { font-size: 22px; font-weight: 700; color: var(--primary); margin-top: 4px; }
+        .cat-bar .bar-bg { height: 6px; background: #ffe0ec; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .cat-bar .bar-fill { height: 100%; background: linear-gradient(90deg, #ff6b9d, #ffa6c1); border-radius: 3px; }
+        .hot-list { display: flex; flex-direction: column; gap: 10px; }
+        .hot-item { display: flex; align-items: center; gap: 10px; }
+        .hot-rank {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary-dark);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; flex-shrink: 0;
+        }
+        .hot-item:nth-child(1) .hot-rank { background: #ff6b9d; color: #fff; }
+        .hot-item:nth-child(2) .hot-rank { background: #ffa6c1; color: #fff; }
+        .hot-item:nth-child(3) .hot-rank { background: #ffc2d6; color: #fff; }
+        .hot-name { flex: 1; font-size: 14px; }
+        .hot-count { font-size: 13px; color: var(--text-light); }
+
+        /* Tab */
+        .tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 2px solid var(--border); flex-wrap: wrap; }
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 15px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--primary); }
+        .tab.active { color: var(--primary-dark); border-bottom-color: var(--primary-dark); font-weight: 600; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* 工具栏 */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .toolbar input, .toolbar select {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+            background: #fff;
+        }
+        .toolbar input:focus, .toolbar select:focus { border-color: var(--primary); }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #cf1322; }
+        .btn-default { background: #fff; color: #666; border: 1px solid var(--border); }
+        .btn-default:hover { color: var(--primary); border-color: var(--primary); }
+        .btn-sm { padding: 5px 12px; font-size: 13px; }
+
+        /* 表格 */
+        .table-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: var(--primary-bg); }
+        th { padding: 14px 16px; text-align: left; font-size: 13px; color: var(--primary-dark); font-weight: 600; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #f5f0f3; }
+        tr:hover { background: #fffafc; }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        .tag.normal { background: #f6ffed; color: var(--success); }
+        .tag.warn { background: #fff7e6; color: var(--warn); }
+        .tag.expired { background: #fff1f0; color: var(--danger); }
+        .tag.cat { background: var(--primary-light); color: var(--primary-dark); }
+        .tag.low { background: #f9f0ff; color: var(--purple); }
+        .actions { display: flex; gap: 8px; }
+        .actions .btn { padding: 4px 10px; font-size: 12px; }
+
+        /* 分页 */
+        .pagination { display: flex; justify-content: center; gap: 8px; padding: 16px; }
+        .pagination button {
+            min-width: 32px; height: 32px;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 分类管理 */
+        .cat-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .cat-item {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+        .cat-item .name { font-size: 15px; }
+
+        /* 预警列表 */
+        .warn-section { margin-bottom: 20px; }
+        .warn-section h3 { font-size: 15px; margin-bottom: 12px; color: var(--primary-dark); }
+        .warn-item {
+            background: #fff;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--warn);
+            box-shadow: var(--shadow);
+        }
+        .warn-item.expired { border-left-color: var(--danger); }
+        .warn-item.low { border-left-color: var(--purple); }
+        .warn-item .info .name { font-size: 15px; font-weight: 600; }
+        .warn-item .info .meta { font-size: 12px; color: #999; margin-top: 4px; }
+
+        /* 采购清单 */
+        .purchase-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .purchase-card .name { font-size: 15px; font-weight: 600; }
+        .purchase-card .meta { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        /* 操作日志 */
+        .log-type { font-weight: 600; }
+        .log-type.add { color: var(--success); }
+        .log-type.update { color: var(--primary-dark); }
+        .log-type.delete { color: var(--danger); }
+
+        /* Modal */
+        .modal-mask {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 14px;
+            width: 480px;
+            max-width: 92%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(233, 30, 99, 0.2);
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 18px; color: var(--primary-dark); }
+        .form-item { margin-bottom: 14px; }
+        .form-item label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+        .form-item input, .form-item select, .form-item textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+        }
+        .form-item input:focus, .form-item select:focus { border-color: var(--primary); }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-item { flex: 1; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+        .empty { text-align: center; padding: 40px; color: #999; }
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #fff;
+            padding: 10px 20px; border-radius: 8px;
+            z-index: 200; font-size: 14px;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌸 家庭物品管理系统</h1>
+        <p>物品台账 · 过期预警 · 低值提醒 · 采购清单 · 操作日志</p>
+    </div>
+
+    <div class="container">
+        <!-- 统计卡片 -->
+        <div class="stats">
+            <div class="stat-card total">
+                <div class="stat-icon total">📦</div>
+                <div class="stat-info"><div class="num" id="statTotal">0</div><div class="label">物品总数</div></div>
+            </div>
+            <div class="stat-card warn">
+                <div class="stat-icon warn">⚠️</div>
+                <div class="stat-info"><div class="num" id="statWarn">0</div><div class="label">即将过期(7天内)</div></div>
+            </div>
+            <div class="stat-card expired">
+                <div class="stat-icon expired">🚫</div>
+                <div class="stat-info"><div class="num" id="statExpired">0</div><div class="label">已过期</div></div>
+            </div>
+            <div class="stat-card low">
+                <div class="stat-icon low">📉</div>
+                <div class="stat-info"><div class="num" id="statLow">0</div><div class="label">低值库存</div></div>
+            </div>
+        </div>
+
+        <!-- 分类统计 + 热门物品 -->
+        <div class="dashboard-row">
+            <div class="cat-stats">
+                <h3>📊 分类分布</h3>
+                <div class="cat-bars" id="catBars"></div>
+            </div>
+            <div class="hot-items">
+                <h3>🔥 热门物品 TOP5</h3>
+                <div class="hot-list" id="hotList"></div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" data-tab="items">物品台账</div>
+            <div class="tab" data-tab="warn">过期预警</div>
+            <div class="tab" data-tab="purchase">采购清单</div>
+            <div class="tab" data-tab="log">操作日志</div>
+            <div class="tab" data-tab="category">分类管理</div>
+        </div>
+
+        <!-- 物品台账 -->
+        <div class="panel active" id="panel-items">
+            <div class="toolbar">
+                <input id="searchName" placeholder="物品名称" />
+                <input id="searchLocation" placeholder="存放位置" />
+                <select id="searchCategory"><option value="">全部分类</option></select>
+                <button class="btn btn-primary" onclick="searchItems()">查询</button>
+                <button class="btn btn-default" onclick="resetSearch()">重置</button>
+                <button class="btn btn-default" style="margin-left:auto" onclick="exportCsv()">📥 导出Excel</button>
+                <button class="btn btn-primary" onclick="openItemModal()">+ 新增物品</button>
+            </div>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>物品名称</th><th>分类</th><th>数量</th><th>阈值</th>
+                            <th>存放位置</th><th>保质期</th><th>状态</th><th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemTbody"></tbody>
+                </table>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </div>
+
+        <!-- 过期预警 -->
+        <div class="panel" id="panel-warn">
+            <div class="warn-section">
+                <h3>🚫 已过期物品</h3>
+                <div id="expiredList"></div>
+            </div>
+            <div class="warn-section">
+                <h3>⚠️ 即将过期物品（7天内）</h3>
+                <div id="warnList"></div>
+            </div>
+            <div class="warn-section">
+                <h3>📉 低值库存物品</h3>
+                <div id="lowStockList"></div>
+            </div>
+        </div>
+
+        <!-- 采购清单 -->
+        <div class="panel" id="panel-purchase">
+            <div id="purchaseList"></div>
+        </div>
+
+        <!-- 操作日志 -->
+        <div class="panel" id="panel-log">
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr><th>时间</th><th>操作类型</th><th>物品</th><th>详情</th><th>操作人</th></tr>
+                    </thead>
+                    <tbody id="logTbody"></tbody>
+                </table>
+                <div class="pagination" id="logPagination"></div>
+            </div>
+        </div>
+
+        <!-- 分类管理 -->
+        <div class="panel" id="panel-category">
+            <div class="toolbar">
+                <input id="newCatName" placeholder="新分类名称" />
+                <button class="btn btn-primary" onclick="addCategory()">新增分类</button>
+            </div>
+            <div class="cat-list" id="catList"></div>
+        </div>
+    </div>
+
+    <!-- 物品弹窗 -->
+    <div class="modal-mask" id="itemModal">
+        <div class="modal">
+            <h3 id="itemModalTitle">新增物品</h3>
+            <input type="hidden" id="itemId" />
+            <div class="form-item">
+                <label>物品名称 *</label>
+                <input id="itemName" />
+            </div>
+            <div class="form-row">
+                <div class="form-item">
+                    <label>分类 *</label>
+                    <select id="itemCategory"></select>
+                </div>
+                <div class="form-item">
+                    <label>数量 *</label>
+                    <input id="itemQuantity" type="number" value="1" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-item">
+                    <label>低值阈值</label>
+                    <input id="itemThreshold" type="number" value="1" />
+                </div>
+                <div class="form-item">
+                    <label>存放位置</label>
+                    <input id="itemLocation" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-item">
+                    <label>购入时间</label>
+                    <input id="itemPurchase" type="date" />
+                </div>
+                <div class="form-item">
+                    <label>保质期截止</label>
+                    <input id="itemExpire" type="date" />
+                </div>
+            </div>
+            <div class="form-item">
+                <label>备注</label>
+                <textarea id="itemRemark" rows="2"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeItemModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveItem()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let currentPage = 1;
+let logPage = 1;
+const pageSize = 10;
+let categories = [];
+let allItems = [];
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+async function req(url, options = {}) {
+    const res = await fetch(API + url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+    });
+    return res.json();
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'warn') loadWarnAll();
+        if (tab.dataset.tab === 'purchase') loadPurchaseList();
+        if (tab.dataset.tab === 'log') loadLogs();
+        if (tab.dataset.tab === 'category') loadCategory();
+    };
+});
+
+async function loadStats() {
+    const r = await req('/item/getStatistics');
+    if (r.code === 200) {
+        document.getElementById('statTotal').textContent = r.data.total;
+        document.getElementById('statWarn').textContent = r.data.warn;
+        document.getElementById('statExpired').textContent = r.data.expired;
+        document.getElementById('statLow').textContent = r.data.lowStock;
+        const max = Math.max(...r.data.categoryStats.map(c => c.count), 1);
+        document.getElementById('catBars').innerHTML = r.data.categoryStats.map(c => `
+            <div class="cat-bar">
+                <div class="name">${c.categoryName}</div>
+                <div class="count">${c.count}</div>
+                <div class="bar-bg"><div class="bar-fill" style="width:${(c.count / max * 100)}%"></div></div>
+            </div>
+        `).join('');
+        const hot = r.data.useFrequencyTop || [];
+        document.getElementById('hotList').innerHTML = hot.length ? hot.map((it, i) => `
+            <div class="hot-item">
+                <div class="hot-rank">${i + 1}</div>
+                <div class="hot-name">${it.name}</div>
+                <div class="hot-count">操作 ${it.useCount} 次</div>
+            </div>
+        `).join('') : '<div class="empty">暂无数据</div>';
+    }
+}
+
+async function loadCategory(forSelect = false) {
+    const r = await req('/category/list');
+    if (r.code === 200) {
+        categories = r.data;
+        const opts = '<option value="">全部分类</option>' + categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        document.getElementById('searchCategory').innerHTML = opts;
+        document.getElementById('itemCategory').innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        if (!forSelect) {
+            document.getElementById('catList').innerHTML = categories.map(c => `
+                <div class="cat-item">
+                    <span class="name">${c.name}</span>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id}, '${c.name}')">删除</button>
+                </div>
+            `).join('') || '<div class="empty">暂无分类</div>';
+        }
+    }
+}
+async function addCategory() {
+    const name = document.getElementById('newCatName').value.trim();
+    if (!name) return toast('请输入分类名称');
+    const r = await req('/category/add', { method: 'POST', body: JSON.stringify({ name }) });
+    toast(r.message);
+    if (r.code === 200) {
+        document.getElementById('newCatName').value = '';
+        loadCategory();
+        loadStats();
+    }
+}
+async function deleteCategory(id, name) {
+    if (!confirm(`确认删除分类「${name}」？`)) return;
+    const r = await req(`/category/delete?id=${id}`, { method: 'POST' });
+    toast(r.message);
+    if (r.code === 200) { loadCategory(); loadStats(); }
+}
+
+async function loadItems() {
+    const name = document.getElementById('searchName').value;
+    const location = document.getElementById('searchLocation').value;
+    const categoryId = document.getElementById('searchCategory').value;
+    const params = new URLSearchParams({ pageNum: currentPage, pageSize });
+    if (name) params.append('name', name);
+    if (location) params.append('location', location);
+    if (categoryId) params.append('categoryId', categoryId);
+    const r = await req('/item/pageList?' + params);
+    if (r.code === 200) {
+        const { total, records } = r.data;
+        allItems = records;
+        const tbody = document.getElementById('itemTbody');
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty">暂无数据</td></tr>';
+        } else {
+            const statusMap = { normal: ['正常','normal'], warn: ['即将过期','warn'], expired: ['已过期','expired'] };
+            tbody.innerHTML = records.map(it => {
+                const isLow = it.quantity <= (it.lowThreshold || 1);
+                return `
+                <tr>
+                    <td>${it.name}</td>
+                    <td><span class="tag cat">${it.categoryName || '-'}</span></td>
+                    <td>${it.quantity}</td>
+                    <td>${it.lowThreshold || 1} ${isLow ? '<span class="tag low">低</span>' : ''}</td>
+                    <td>${it.location || '-'}</td>
+                    <td>${it.expireTime || '无'}</td>
+                    <td><span class="tag ${statusMap[it.expireStatus][1]}">${statusMap[it.expireStatus][0]}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-default btn-sm" onclick="editItem(${it.id})">编辑</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteItem(${it.id})">删除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+        renderPagination(total);
+    }
+}
+function renderPagination(total) {
+    const pages = Math.ceil(total / pageSize) || 1;
+    let html = `<button ${currentPage === 1 ? 'disabled' : ''} onclick="goPage(${currentPage - 1})">上一页</button>`;
+    for (let i = 1; i <= pages; i++) {
+        html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+    }
+    html += `<button ${currentPage === pages ? 'disabled' : ''} onclick="goPage(${currentPage + 1})">下一页</button>`;
+    document.getElementById('pagination').innerHTML = html;
+}
+function goPage(p) { currentPage = p; loadItems(); }
+function searchItems() { currentPage = 1; loadItems(); }
+function resetSearch() {
+    document.getElementById('searchName').value = '';
+    document.getElementById('searchLocation').value = '';
+    document.getElementById('searchCategory').value = '';
+    currentPage = 1;
+    loadItems();
+}
+
+function openItemModal() {
+    document.getElementById('itemModalTitle').textContent = '新增物品';
+    document.getElementById('itemId').value = '';
+    document.getElementById('itemName').value = '';
+    document.getElementById('itemQuantity').value = 1;
+    document.getElementById('itemThreshold').value = 1;
+    document.getElementById('itemLocation').value = '';
+    document.getElementById('itemPurchase').value = '';
+    document.getElementById('itemExpire').value = '';
+    document.getElementById('itemRemark').value = '';
+    document.getElementById('itemModal').classList.add('show');
+}
+async function editItem(id) {
+    const r = await req(`/item/pageList?pageNum=1&pageSize=100`);
+    const item = r.data.records.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('itemModalTitle').textContent = '编辑物品';
+    document.getElementById('itemId').value = item.id;
+    document.getElementById('itemName').value = item.name;
+    document.getElementById('itemCategory').value = item.categoryId;
+    document.getElementById('itemQuantity').value = item.quantity;
+    document.getElementById('itemThreshold').value = item.lowThreshold || 1;
+    document.getElementById('itemLocation').value = item.location || '';
+    document.getElementById('itemPurchase').value = item.purchaseTime || '';
+    document.getElementById('itemExpire').value = item.expireTime || '';
+    document.getElementById('itemRemark').value = item.remark || '';
+    document.getElementById('itemModal').classList.add('show');
+}
+function closeItemModal() { document.getElementById('itemModal').classList.remove('show'); }
+async function saveItem() {
+    const id = document.getElementById('itemId').value;
+    const data = {
+        name: document.getElementById('itemName').value.trim(),
+        categoryId: Number(document.getElementById('itemCategory').value),
+        quantity: Number(document.getElementById('itemQuantity').value),
+        lowThreshold: Number(document.getElementById('itemThreshold').value) || 1,
+        location: document.getElementById('itemLocation').value || null,
+        purchaseTime: document.getElementById('itemPurchase').value || null,
+        expireTime: document.getElementById('itemExpire').value || null,
+        remark: document.getElementById('itemRemark').value || null
+    };
+    if (!data.name) return toast('请输入物品名称');
+    if (!data.categoryId) return toast('请选择分类');
+    if (!data.quantity) return toast('请输入数量');
+    const url = id ? '/item/update' : '/item/add';
+    if (id) data.id = Number(id);
+    const r = await req(url, { method: 'POST', body: JSON.stringify(data) });
+    toast(r.message);
+    if (r.code === 200) {
+        closeItemModal();
+        loadItems();
+        loadStats();
+    }
+}
+async function deleteItem(id) {
+    if (!confirm('确认删除该物品？')) return;
+    const r = await req(`/item/delete?id=${id}`, { method: 'POST' });
+    toast(r.message);
+    if (r.code === 200) { loadItems(); loadStats(); }
+}
+
+function exportCsv() {
+    window.location.href = '/item/export';
+}
+
+// 预警（过期 + 低值）
+async function loadWarnAll() {
+    const r = await req('/item/warnList');
+    if (r.code === 200) {
+        const expired = r.data.filter(i => i.expireStatus === 'expired');
+        const warn = r.data.filter(i => i.expireStatus === 'warn');
+        document.getElementById('expiredList').innerHTML = expired.length ? expired.map(it => `
+            <div class="warn-item expired">
+                <div class="info">
+                    <div class="name">${it.name} <span class="tag expired">已过期</span></div>
+                    <div class="meta">分类：${it.categoryName} · 位置：${it.location || '-'} · 过期日：${it.expireTime} · 数量：${it.quantity}</div>
+                </div>
+                <button class="btn btn-default btn-sm" onclick="editItem(${it.id})">处理</button>
+            </div>
+        `).join('') : '<div class="empty">暂无已过期物品 🎉</div>';
+        document.getElementById('warnList').innerHTML = warn.length ? warn.map(it => `
+            <div class="warn-item">
+                <div class="info">
+                    <div class="name">${it.name} <span class="tag warn">即将过期</span></div>
+                    <div class="meta">分类：${it.categoryName} · 位置：${it.location || '-'} · 过期日：${it.expireTime} · 数量：${it.quantity}</div>
+                </div>
+                <button class="btn btn-default btn-sm" onclick="editItem(${it.id})">处理</button>
+            </div>
+        `).join('') : '<div class="empty">暂无即将过期物品 🎉</div>';
+    }
+    const low = await req('/item/lowStockList');
+    if (low.code === 200) {
+        document.getElementById('lowStockList').innerHTML = low.data.length ? low.data.map(it => `
+            <div class="warn-item low">
+                <div class="info">
+                    <div class="name">${it.name} <span class="tag low">库存不足</span></div>
+                    <div class="meta">分类：${it.categoryName} · 当前库存：${it.quantity}（阈值：${it.lowThreshold || 1}）· 位置：${it.location || '-'}</div>
+                </div>
+                <button class="btn btn-default btn-sm" onclick="editItem(${it.id})">补货</button>
+            </div>
+        `).join('') : '<div class="empty">库存充足 🎉</div>';
+    }
+}
+
+// 采购清单
+async function loadPurchaseList() {
+    const r = await req('/item/purchaseList');
+    if (r.code === 200) {
+        document.getElementById('purchaseList').innerHTML = r.data.length ? r.data.map(it => {
+            const isExpired = it.expireStatus === 'expired';
+            const isLow = it.quantity <= (it.lowThreshold || 1);
+            const reason = isExpired ? '已过期需补货' : '库存不足需补货';
+            const tagColor = isExpired ? 'expired' : 'low';
+            return `
+            <div class="purchase-card">
+                <div>
+                    <div class="name">${it.name} <span class="tag ${tagColor}">${reason}</span></div>
+                    <div class="meta">分类：${it.categoryName} · 当前库存：${it.quantity} · 位置：${it.location || '-'} ${it.expireTime ? '· 保质期：' + it.expireTime : ''}</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="editItem(${it.id})">编辑</button>
+            </div>`;
+        }).join('') : '<div class="empty">暂无需要采购的物品 🎉</div>';
+    }
+}
+
+// 操作日志
+async function loadLogs() {
+    const r = await req(`/log/pageList?pageNum=${logPage}&pageSize=${pageSize}`);
+    if (r.code === 200) {
+        const { total, records } = r.data;
+        const typeMap = { add: ['新增','add'], update: ['修改','update'], delete: ['删除','delete'] };
+        document.getElementById('logTbody').innerHTML = records.length ? records.map(l => `
+            <tr>
+                <td>${l.createTime}</td>
+                <td><span class="log-type ${typeMap[l.operationType][1]}">${typeMap[l.operationType][0]}</span></td>
+                <td>${l.itemName || '-'}</td>
+                <td>${l.detail || '-'}</td>
+                <td>${l.operator}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="empty">暂无日志</td></tr>';
+        const pages = Math.ceil(total / pageSize) || 1;
+        let html = `<button ${logPage === 1 ? 'disabled' : ''} onclick="goLogPage(${logPage - 1})">上一页</button>`;
+        for (let i = 1; i <= pages; i++) {
+            html += `<button class="${i === logPage ? 'active' : ''}" onclick="goLogPage(${i})">${i}</button>`;
+        }
+        html += `<button ${logPage === pages ? 'disabled' : ''} onclick="goLogPage(${logPage + 1})">下一页</button>`;
+        document.getElementById('logPagination').innerHTML = html;
+    }
+}
+function goLogPage(p) { logPage = p; loadLogs(); }
+
+loadStats();
+loadCategory();
+loadItems();
+</script>
+</body>
+</html>
